@@ -7,27 +7,21 @@ from dotenv import load_dotenv
 load_dotenv(dotenv_path= '.env')
 def xqStockInfo(mkt, code:str, s, h):  # 雪球股票信息
     code=code.upper()
-    data = {
-        'code': str(code),
-        'size': '30',
-        # 'key': '47bce5c74f',
-        'market': mkt,
-    }
+    data = {'code': code, 'size': '30', 'market': mkt}
     r = s.get("https://xueqiu.com/stock/p/search.json", headers=h, params=data)
     print(code,r.text)
     stocks = json.loads(r.text)
     stocks = stocks['stocks']
-    stock = None
     if len(stocks) > 0:
         for info in stocks:
             if info['code']==code:
                 return info
-    return stock
+    return None
 
 class xueqiuPortfolio():
     def __init__(self,mkt):
         self.mkt = mkt
-        self.position = dict()
+        self.position = {}
         self.holdnum = 5
         self.session = requests.Session()
         self.session.cookies.update(self.getXueqiuCookie())
@@ -57,15 +51,15 @@ class xueqiuPortfolio():
         cash = round(remain_weight, 2)
         data = {
             "cash": cash,
-            "holdings": str(json.dumps(position_list)),
+            "holdings": json.dumps(position_list),
             "cube_symbol": str(portfolio_code),
             'segment': 'true',
-            'comment': ""
+            'comment': "",
         }
         try:
             resp = self.session.post("https://xueqiu.com/cubes/rebalancing/create.json", headers=self.headers, data=data)
         except Exception as e:
-            print('调仓失败: %s ' % e)
+            print(f'调仓失败: {e} ')
         else:
             print(resp.text)
             # with open('xueqiu/' + mkt + datetime.now().strftime('%Y%m%d_%H ：%M') + '.json', 'w', encoding='utf-8') as f:
