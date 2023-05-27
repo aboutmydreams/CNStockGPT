@@ -1,0 +1,1 @@
+cp ./libmini_racer.dylib .venv/lib/python3.10/site-packages/py_mini_racer

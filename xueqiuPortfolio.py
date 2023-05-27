@@ -1,12 +1,16 @@
 import os
-import requests,json,re
+import requests
+import json
+import re
 from datetime import *
 import pandas as pd
 from dotenv import load_dotenv
 
-load_dotenv(dotenv_path= '.env')
-def xqStockInfo(mkt, code:str, s, h):  # 雪球股票信息
-    code=code.upper()
+load_dotenv(dotenv_path='.env')
+
+
+def xqStockInfo(mkt, code: str, s, h):  # 雪球股票信息
+    code = code.upper()
     data = {
         'code': str(code),
         'size': '30',
@@ -14,18 +18,19 @@ def xqStockInfo(mkt, code:str, s, h):  # 雪球股票信息
         'market': mkt,
     }
     r = s.get("https://xueqiu.com/stock/p/search.json", headers=h, params=data)
-    print(code,r.text)
+    print(code, r.text)
     stocks = json.loads(r.text)
     stocks = stocks['stocks']
     stock = None
     if len(stocks) > 0:
         for info in stocks:
-            if info['code']==code:
+            if info['code'] == code:
                 return info
     return stock
 
+
 class xueqiuPortfolio():
-    def __init__(self,mkt):
+    def __init__(self, mkt):
         self.mkt = mkt
         self.position = dict()
         self.holdnum = 5
@@ -34,12 +39,11 @@ class xueqiuPortfolio():
         self.p_url = 'https://xueqiu.com/P/'
         self.headers = {
             "Connection": "close",
-             "user-agent": "Mozilla",
+            "user-agent": "Mozilla",
         }
 
-
     def getXueqiuCookie(self):
-        sbCookie=os.environ['XQCOOKIE']
+        sbCookie = os.environ['XQCOOKIE']
         cookie_dict = {}
         for record in sbCookie.split(";"):
             key, value = record.strip().split("=", 1)
@@ -49,7 +53,7 @@ class xueqiuPortfolio():
                 del item['expiry']
         return cookie_dict
 
-    def trade(self,mkt,position_list=None):  # 调仓雪球组合
+    def trade(self, mkt, position_list=None):  # 调仓雪球组合
         portfolio_code = os.environ['XQP']
         if position_list is None:
             return
@@ -63,7 +67,8 @@ class xueqiuPortfolio():
             'comment': ""
         }
         try:
-            resp = self.session.post("https://xueqiu.com/cubes/rebalancing/create.json", headers=self.headers, data=data)
+            resp = self.session.post(
+                "https://xueqiu.com/cubes/rebalancing/create.json", headers=self.headers, data=data)
         except Exception as e:
             print('调仓失败: %s ' % e)
         else:
@@ -72,10 +77,12 @@ class xueqiuPortfolio():
             #     json.dump(json.loads(resp.text), f)
 
     def getPosition(self):
-        if len(self.position)>0:
+        if len(self.position) > 0:
             return self.position
-        resp = self.session.get(self.p_url + os.environ['XQP'], headers=self.headers).text.replace('null','0')
-        portfolio_info = json.loads(re.search(r'(?<=SNB.cubeInfo = ).*(?=;\n)', resp).group())
+        resp = self.session.get(
+            self.p_url + os.environ['XQP'], headers=self.headers).text.replace('null', '0')
+        portfolio_info = json.loads(
+            re.search(r'(?<=SNB.cubeInfo = ).*(?=;\n)', resp).group())
         asset_balance = float(portfolio_info['net_value'])
         print(portfolio_info)
         position = portfolio_info['view_rebalancing']
@@ -89,17 +96,18 @@ class xueqiuPortfolio():
             'money_type': u'CNY',
             'pre_interest': 0.25
         }]
-        self.position['holding']=position['holdings']
-        self.position['cash']=int(cash)
-        self.position['last']=portfolio_info['last_success_rebalancing']['holdings']
-        self.position['update']=datetime.fromtimestamp(position['updated_at']/1000).date()
-        self.position['latest']=portfolio_info['sell_rebalancing']
-        self.position['last']=portfolio_info['last_success_rebalancing']
-        self.position['monthly_gain']=portfolio_info['monthly_gain']
+        self.position['holding'] = position['holdings']
+        self.position['cash'] = int(cash)
+        self.position['last'] = portfolio_info['last_success_rebalancing']['holdings']
+        self.position['update'] = datetime.fromtimestamp(
+            position['updated_at']/1000).date()
+        self.position['latest'] = portfolio_info['sell_rebalancing']
+        self.position['last'] = portfolio_info['last_success_rebalancing']
+        self.position['monthly_gain'] = portfolio_info['monthly_gain']
         self.position['total_gain'] = portfolio_info['total_gain']
         return self.position
 
-    def newPostition(self,mkt,symbol,wgt):
+    def newPostition(self, mkt, symbol, wgt):
         stock = xqStockInfo(mkt, symbol, self.session, self.headers)
         return {
             "code": stock['code'],
@@ -120,28 +128,30 @@ class xueqiuPortfolio():
         }
 
     def getCube(self):
-        cubeUrl = 'https://xueqiu.com/cubes/nav_daily/all.json?cube_symbol=' + os.environ['XQP']
+        cubeUrl = 'https://xueqiu.com/cubes/nav_daily/all.json?cube_symbol=' + \
+            os.environ['XQP']
         print(cubeUrl)
-        response = self.session.get(url=cubeUrl,headers=self.headers)
+        response = self.session.get(url=cubeUrl, headers=self.headers)
         return json.loads(response.text)
 
+
 if __name__ == "__main__":
-    df=pd.read_csv('wencai.csv')[:4]
-    df['股票代码']=df['股票代码'].str[-2:]+df['股票代码'].str[:-3]
+    df = pd.read_csv('wencai.csv')[:4]
+    df['股票代码'] = df['股票代码'].str[-2:]+df['股票代码'].str[:-3]
     print(df)
     xueqiuP = xueqiuPortfolio('cn')
-    xueqiuPp= xueqiuP.getPosition()
+    xueqiuPp = xueqiuP.getPosition()
     position = xueqiuPp['holding']
-    cash=xueqiuPp['cash']
-    latest=xueqiuPp['latest']
+    cash = xueqiuPp['cash']
+    latest = xueqiuPp['latest']
     stockHeld = [x['stock_symbol'] for x in position]
     for p in position:
         if p['stock_symbol'] not in df['股票代码'].values:
-            cash+=p['weight']
+            cash += p['weight']
             p['weight'] = 0
             p["proactive"] = True
-    for k,v in df.iterrows():
-        if v['股票代码'] not in stockHeld and v['score']>0 and cash>=24:
-            position.append(xueqiuP.newPostition('cn',v['股票代码'],24))
-            cash-=24
+    for k, v in df.iterrows():
+        if v['股票代码'] not in stockHeld and v['score'] > 0 and cash >= 24:
+            position.append(xueqiuP.newPostition('cn', v['股票代码'], 24))
+            cash -= 24
     xueqiuP.trade('cn', position)

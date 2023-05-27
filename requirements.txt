@@ -1,4 +1,5 @@
 pandas
 revChatGPT
 python-dotenv
+py_mini_racer
 akshare
