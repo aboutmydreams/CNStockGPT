@@ -111,11 +111,15 @@ if __name__ == '__main__':
     bot=Bot()
     for k,v in wdf.iterrows():
         symbol=k.split('.')[0]
-        wdf.at[k,'stock']='<a href="https://xueqiu.com/S/%s">%s%s</a>'%(k[-2:]+symbol,k[-2:]+symbol,v['股票简称'])
+        wdf.at[
+            k, 'stock'
+        ] = f"""<a href="https://xueqiu.com/S/{k[-2:] + symbol}">{k[-2:] + symbol}{v['股票简称']}</a>"""
         news=ak.stock_news_em(symbol)
         news.drop_duplicates(subset='新闻标题',inplace=True)
         news['发布时间']=pd.to_datetime(news['发布时间'])
-        news['新闻标题']=news['发布时间'].dt.strftime('%Y-%m-%d ')+news['新闻标题'].str.replace('%s：'%v['股票简称'],'')
+        news['新闻标题'] = news['发布时间'].dt.strftime('%Y-%m-%d ') + news[
+            '新闻标题'
+        ].str.replace(f"{v['股票简称']}：", '')
         news = news[~news['新闻标题'].str.contains('股|主力|机构|资金流')]
         news['news']=news['新闻标题'].str.cat(news['新闻内容'].str.split('。').str[0], sep=' ')
         news = news[news['news'].str.contains(v['股票简称'])]
